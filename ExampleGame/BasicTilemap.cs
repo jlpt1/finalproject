@@ -35,10 +35,22 @@ namespace ExampleGame
         /// </summary>
         public Texture2D TilesetTexture { get; init; }
 
+        /// <summary>
+        /// An array of source rectangles corresponding to
+        /// tile positions in the texture
+        /// </summary>
         public Rectangle[] Tiles { get; init; }
 
+        /// <summary>
+        /// The map data - an array of indices to the Tile array
+        /// </summary>
         public int[] TileIndices { get; init; }
 
+        /// <summary>
+        /// Draws the tilemap. Assumes that spriteBatch.Begin() has been called.
+        /// </summary>
+        /// <param name="gameTime">The game time</param>
+        /// <param name="spriteBatch">a spritebatch to draw with</param>
         public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {
             for(int y = 0; y < MapHeight; y++)

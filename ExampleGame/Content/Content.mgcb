@@ -17,6 +17,6 @@
 #begin example.tmap
 /importer:BasicTilemapImporter
 /processor:BasicTilemapProcessor
-/processorParam:Scale=2
+/processorParam:Scale=1
 /build:example.tmap
 

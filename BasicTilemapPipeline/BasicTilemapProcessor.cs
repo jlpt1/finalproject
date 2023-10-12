@@ -29,7 +29,7 @@ namespace SimpleTilemapPipeline
 
             // Determine the number of rows and columns of tiles in the tileset texture
             int tilesetColumns = map.TilesetTexture.Mipmaps[0].Width / map.TileWidth;
-            int tilesetRows = map.TilesetTexture.Mipmaps[0].Height / map.TileWidth;
+            int tilesetRows = map.TilesetTexture.Mipmaps[0].Height / map.TileHeight;
 
             // We need to create the bounds for each tile in the tileset image
             // These will be stored in the tiles array

@@ -46,21 +46,9 @@ namespace BasicTilemapPipeline
         /// <summary>The map data</summary>
         public int[] TileIndices;
 
-        /// <summary>The map filename</summary>
-        [ContentSerializerIgnore]
-        public string mapFilename;
-
         /// <summary> The tileset image filename </summary>
         [ContentSerializerIgnore]
         public String TilesetImageFilename;
 
-        /// <summary>The tileset image dimensions</summary>
-        [ContentSerializerIgnore] 
-        public int TilesetImageWidth, TilesetImageHeight;
-
-        /// <summary>The number of tileset rows and columns</summary>
-        [ContentSerializerIgnore] 
-        public int TilesetRows, TilesetColumns;
-        
     }
 }
