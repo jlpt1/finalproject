@@ -46,6 +46,27 @@ namespace ExampleGame
         /// </summary>
         public int[] TileIndices { get; init; }
 
+        public void DrawBlock(GameTime gameTime, SpriteBatch spriteBatch, int selected)
+        {
+            // Indices start at 1, so shift by 1 for array coordinates
+      
+
+            // Index of -1 (shifted from 0) should not be drawn
+            
+            // Draw the current tile
+            spriteBatch.Draw(
+                TilesetTexture,
+                new Rectangle(
+                    22 * TileWidth,
+                    10,
+                    TileWidth*2,
+                    TileHeight*2
+                    ),
+                Tiles[selected],
+                Color.White
+                );
+        }
+    
         /// <summary>
         /// Draws the tilemap. Assumes that spriteBatch.Begin() has been called.
         /// </summary>
