@@ -196,23 +196,28 @@ namespace ExampleGame
 
             base.Update(gameTime);
         }
+        private void LoadCurrentState()
+        {
 
+        }
         private void SaveCurrentState()
         {
             StringBuilder sb = new StringBuilder();
 
             // Add essence to the file
-            sb.AppendLine($"Essence: {_essence}");
-
+            //sb.AppendLine($"Essence: {_essence}");
+            sb.AppendLine("tileset.png");
+            sb.AppendLine("32,32");
+            sb.AppendLine("50,20");
             // Add tilemap to the file
             for (int y = 0; y < _tilemap.MapHeight; y++)
             {
                 for (int x = 0; x < _tilemap.MapWidth; x++)
                 {
                     sb.Append(GetTileIndex(x, y, _tilemap));
-                    if (x != _tilemap.MapWidth - 1) sb.Append(",");
+                    if (x != _tilemap.MapWidth-1 && y != _tilemap.MapHeight) sb.Append(",");
                 }
-                sb.AppendLine();
+           
             }
 
             // Offload to an STA thread
@@ -221,7 +226,7 @@ namespace ExampleGame
                 // Prompt user for the filename
                 using (SaveFileDialog sfd = new SaveFileDialog())
                 {
-                    sfd.Filter = "Text Files|*.txt";
+                    sfd.Filter = "Text Files|*.tmap";
                     sfd.Title = "Save Map";
                     sfd.InitialDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
@@ -229,6 +234,7 @@ namespace ExampleGame
                     {
                         File.WriteAllText(sfd.FileName, sb.ToString());
                     }
+                    
                 }
             });
 
