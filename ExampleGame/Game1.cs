@@ -24,6 +24,7 @@ namespace ExampleGame
         private SpriteBatch _spriteBatch;
         private BasicTilemap _tilemap;
         private SpriteFont bangers;
+        private SpriteFont bangers2;
         private int _selectedBlockIndex = 0;
         private int _essence = 0;
         private int[] costs = { 20, 4, 8, 40 };
@@ -83,6 +84,7 @@ namespace ExampleGame
             // _tilemap = Content.Load<BasicTilemap>("example");
             // Current directory is examplegame/bin
             bangers = Content.Load<SpriteFont>("bangers");
+            bangers2 = Content.Load<SpriteFont>("bangers2");
             _tilemap = Content.Load<BasicTilemap>("example");
         }
 
@@ -258,16 +260,23 @@ namespace ExampleGame
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
-            _spriteBatch.Begin();
-            _spriteBatch.DrawString(bangers, "Essenece: "+_essence, new Vector2(1, 1), Color.Gold);
-            _spriteBatch.End();
+           
             // Drawing the tilemap
             _spriteBatch.Begin();
             _tilemap.Draw(gameTime, _spriteBatch);
             _tilemap.DrawBlock(gameTime, _spriteBatch, _selectedBlockIndex);
            
             _spriteBatch.End();
+            _spriteBatch.Begin();
+            _spriteBatch.DrawString(bangers, "Essenece: " + _essence, new Vector2(1, 1), Color.Gold);
 
+            _spriteBatch.DrawString(bangers2, "Right click to place a block, Left click to destroy one", new Vector2(1, 30), Color.Black);
+            _spriteBatch.DrawString(bangers2, "You get essence by destroying blocks", new Vector2(1, 45), Color.Black);
+            _spriteBatch.DrawString(bangers2, "Press 1-4 to change your block", new Vector2(1, 60), Color.Black);
+            _spriteBatch.DrawString(bangers2, "Press R to generate", new Vector2(1, 75), Color.Red);
+            _spriteBatch.DrawString(bangers2, "Press S to save", new Vector2(1, 90), Color.Cyan);
+            _spriteBatch.DrawString(bangers2, "Press L to load", new Vector2(1, 105), Color.Blue);
+            _spriteBatch.End();
             base.Draw(gameTime);
         }
     }

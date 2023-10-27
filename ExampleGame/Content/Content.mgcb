@@ -21,6 +21,13 @@
 /processorParam:TextureFormat=Compressed
 /build:bangers.spritefont
 
+#begin bangers2.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:bangers2.spritefont
+
 #begin example.tmap
 /importer:BasicTilemapImporter
 /processor:BasicTilemapProcessor
