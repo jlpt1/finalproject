@@ -127,6 +127,15 @@ namespace ExampleGame
                     {
                         _essence += 1;
                     }
+                    if (tileType == 3)
+                    {
+                        _essence += 2;
+
+                    }
+                    if (tileType == 4)
+                    {
+                        _essence += 10;
+                    }
                 }
             }
             if (Keyboard.GetState().IsKeyDown(Keys.R))
