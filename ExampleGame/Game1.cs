@@ -1,7 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SharpDX.DirectWrite;
 using System;
+using System.ComponentModel;
 using System.Configuration;
 using System.IO;
 using System.Text;
@@ -23,13 +25,17 @@ namespace ExampleGame
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private BasicTilemap _tilemap;
+        private BasicTilemap _oremap;
         private SpriteFont bangers;
         private SpriteFont bangers2;
         private int _selectedBlockIndex = 0;
         private int _essence = 100;
         private int[] costs = { 20, 4, 8, 40 };
         private bool saved = true;
-
+        private double health = 100;
+        private int level = 1;
+        private int orecount = 0;
+        private int lastGemCollected = 0;
 
 
         public Game1()
@@ -47,7 +53,7 @@ namespace ExampleGame
 
                 // Now, tilemapPath should point to examplegame/content/tilemap.tmap
 
-
+           
          
             base.Initialize();
         }
@@ -61,6 +67,9 @@ namespace ExampleGame
             bangers2 = Content.Load<SpriteFont>("bangers2");
             _essence = LoadFromFile();
             _tilemap = Content.Load<BasicTilemap>("example");
+            _oremap = Content.Load<BasicTilemap>("example2");
+ gen();
+
         }
 
 
@@ -80,8 +89,13 @@ namespace ExampleGame
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-            
 
+            health = health - (1 * Math.Sqrt(level)/3);
+            if (health < 0)
+            {
+                health = 0;
+            }
+          
             KeyboardState keyboardState = Keyboard.GetState();
             if (keyboardState.IsKeyDown(Keys.S))
             {
@@ -89,7 +103,12 @@ namespace ExampleGame
                 SaveCurrentState();
             }
           
-
+            if (orecount <= 0)
+            {
+                gen();
+                level++;
+               
+            }
 
             if (keyboardState.IsKeyDown(Keys.D1)) _selectedBlockIndex = 0;
             if (keyboardState.IsKeyDown(Keys.D2)) _selectedBlockIndex = 1;
@@ -105,6 +124,7 @@ namespace ExampleGame
                 if (_essence >= costs[_selectedBlockIndex] && tileType != _selectedBlockIndex+1)
                 {
                     SetTileAt(tilePosition.X, tilePosition.Y, _selectedBlockIndex + 1, _tilemap);
+                    
                     _essence -= costs[_selectedBlockIndex];
                 }
                     
@@ -113,78 +133,160 @@ namespace ExampleGame
             }
             if (mouseState.LeftButton == ButtonState.Pressed)
             {
-                saved = false;
-                Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
-                int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
-                if (tileType != 0)
+                if (health > 0)
                 {
-                    SetTileAt(tilePosition.X, tilePosition.Y, 0, _tilemap);  // Assuming 0 is air/empty
-                    if (tileType == 1)
-                    {
-                        _essence += 5;
-                    }
-                    if (tileType == 2)
-                    {
-                        _essence += 1;
-                    }
-                    if (tileType == 3)
-                    {
-                        _essence += 2;
 
-                    }
-                    if (tileType == 4)
+
+                    saved = false;
+                    Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
+                    int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
+                    if (tileType != 0)
                     {
-                        _essence += 10;
+                        SetTileAt(tilePosition.X, tilePosition.Y, 0, _tilemap);  // Assuming 0 is air/empty
+                        if (tileType == 1)
+                        {
+                            health += 1;
+                        }
+                        if (tileType == 2)
+                        {
+                            health += 1;
+                        }
+                        if (tileType == 3)
+                        {
+                            health += 1;
+
+                        }
+                        if (tileType == 4)
+                        {
+                            health += 1;
+                        }
+                    }
+                    int oreType = GetTileIndex(tilePosition.X, tilePosition.Y, _oremap);
+                    if (oreType > 0)
+                    {
+                        SetTileAt(tilePosition.X, tilePosition.Y, 0, _oremap);  // Assuming 0 is air/empty
+                        orecount -= 1;
+                        if (oreType == 1)
+                        {
+                            health += 30;
+                        }
+                        if (oreType == 2)
+                        {
+                            health += 40;
+                        }
+                        if (oreType == 3)
+                        {
+                            health += 5;
+
+                        }
+                        if (oreType == 4)
+                        {
+                            health += 7;
+                        }
                     }
                 }
             }
             if (Keyboard.GetState().IsKeyDown(Keys.R))
             {
-                saved = false;
-                Random _random = new Random();
-                int terrainHeight = _random.Next(1, 20);
-                for (int x = 0; x < _tilemap.MapWidth; x++)
+               if (health <= 0)
                 {
-                    for (int y = 0; y < _tilemap.MapHeight; y++)
-                    {
-                        SetTileAt(x, y, 0, _tilemap); // Assuming 0 is the index for your empty or air texture
-                    }
-                }
-                // Iterate over each column in the tilemap
-                for (int x = 0; x < _tilemap.MapWidth; x++)
-                {
-                    // Generate a random height for the terrain in each column
-
-                    terrainHeight += _random.Next(-2, 3);
-                    if (terrainHeight > 13)
-                    {
-                        terrainHeight = 13;
-                    }
-                    if (terrainHeight < 3)
-                    {
-                        terrainHeight = 3;
-                    }
-                    // Fill tiles from the bottom up to the terrain height with a block
-                 
-                        SetTileAt(x, terrainHeight, 1, _tilemap); 
-                    for (int y = terrainHeight; y < 15; y++)
-                    {
-                        SetTileAt(x, y+1, 2, _tilemap);
-                    }
-                   
-
-                    // Fill the rest of the column with air or another tile to represent empty space
-                    for (int y = _tilemap.MapHeight - terrainHeight - 1; y >= 0; y--)
-                    {
-                     //   SetTileAt(x, y, 0, _tilemap); // Assuming 0 is the index for your empty or air texture
-                    }
-                    
+                    gen();
+                    health = 100;
+                    level = 1;
                 }
             }
 
             base.Update(gameTime);
         }
+        private void gen()
+        {
+            saved = false;
+            orecount = 0;
+        Random _random = new Random();
+            int terrainHeight = _random.Next(1, 20);
+            for (int x = 0; x < _tilemap.MapWidth; x++)
+            {
+                for (int y = 0; y < _tilemap.MapHeight; y++)
+                {
+                    SetTileAt(x, y, 0, _tilemap); // Assuming 0 is the index for your empty or air texture
+                    SetTileAt(x, y, 0, _oremap);
+                }
+            }
+            // Iterate over each column in the tilemap
+            for (int x = 0; x < 25; x++) //_tilemap.MapWidth
+            {
+                // Generate a random height for the terrain in each column
 
+                terrainHeight += _random.Next(-2, 3);
+                if (terrainHeight > 13)
+                {
+                    terrainHeight = 13;
+                }
+                if (terrainHeight < 3)
+                {
+                    terrainHeight = 3;
+                }
+                // Fill tiles from the bottom up to the terrain height with a block
+
+                SetTileAt(x, terrainHeight, 1, _tilemap);
+                for (int y = terrainHeight; y < terrainHeight + 4; y++)
+                {
+                    if (y < 14)
+                    {
+                        SetTileAt(x, y + 1, 2, _tilemap);
+                        Random r = new Random();
+
+                        if (r.Next(1, 21) == 5)
+                        {
+
+                            int temp = r.Next(3, 5);
+      
+                            if (temp == 3)
+                            {
+                                SetTileAt(x, y + 1, temp, _oremap);
+                                orecount += 1;
+                            }
+                            if (temp == 4)
+                            {
+                                SetTileAt(x, y + 1, temp, _oremap);
+                                orecount += 1;
+                            }
+                        }
+
+                    }
+                }
+                for (int y = terrainHeight+4; y < 14; y++)
+                {
+                     SetTileAt(x, y + 1, 3, _tilemap);
+                    Random r = new Random();
+
+                    if (r.Next(1, 11) < 2)
+                    {
+
+                        int temp = r.Next(1, 11);
+                        if (temp <= 5)
+                        {
+                            SetTileAt(x, y + 1, 1, _oremap);
+                            orecount += 1;
+                        }
+                        if (temp >= 6 )
+                        {
+                            SetTileAt(x, y + 1, 2, _oremap);
+                            orecount += 1;
+                        }
+                     
+                    }
+
+                }
+
+                // Fill the rest of the column with air or another tile to represent empty space
+                for (int y = _tilemap.MapHeight - terrainHeight - 1; y >= 0; y--)
+                {
+                    //   SetTileAt(x, y, 0, _tilemap); // Assuming 0 is the index for your empty or air texture
+                }
+
+            }
+        }
         static void SaveToFile(string data)
         {
             File.WriteAllText("essence.txt", data);
@@ -351,26 +453,87 @@ namespace ExampleGame
             // Drawing the tilemap
             _spriteBatch.Begin();
             _tilemap.Draw(gameTime, _spriteBatch);
-            _tilemap.DrawBlock(gameTime, _spriteBatch, _selectedBlockIndex);
-           
+           // _tilemap.DrawBlock(gameTime, _spriteBatch, _selectedBlockIndex);
+           _oremap.Draw(gameTime, _spriteBatch);
+            
             _spriteBatch.End();
             _spriteBatch.Begin();
-            _spriteBatch.DrawString(bangers, "Essenece: " + _essence, new Vector2(1, 1), Color.Gold);
+            _spriteBatch.DrawString(bangers, "Level: " + level, new Vector2(1, 1), Color.Gold);
+            _spriteBatch.DrawString(bangers, "Gems: " + orecount, new Vector2(1, 25), Color.Red);
 
-            _spriteBatch.DrawString(bangers2, "Right click to place a block, Left click to destroy one", new Vector2(1, 30), Color.Black);
-            _spriteBatch.DrawString(bangers2, "You get essence by destroying blocks", new Vector2(1, 45), Color.Black);
-            _spriteBatch.DrawString(bangers2, "Press 1-4 to change your block", new Vector2(1, 60), Color.Black);
-            _spriteBatch.DrawString(bangers2, "Press R to generate", new Vector2(1, 75), Color.Red);
-            _spriteBatch.DrawString(bangers2, "Press S to save", new Vector2(1, 90), Color.Cyan);
-            if (saved)
+            _spriteBatch.DrawString(bangers2, "Click on the blocks to destroy them", new Vector2(1, 55), Color.Black);
+            _spriteBatch.DrawString(bangers2, "Gather all the gems to go to the next level", new Vector2(1, 70), Color.Black);
+            _spriteBatch.DrawString(bangers2, "Your health metter on the right slowly declines", new Vector2(1, 85), Color.Black);
+            _spriteBatch.DrawString(bangers2, "Gather gems / blocks to get health", new Vector2(1, 100), Color.Black);
+            _spriteBatch.DrawString(bangers2, "The higher level you are the faster your health declines", new Vector2(1, 115), Color.Black);
+            if (health <= 0)
             {
-                _spriteBatch.DrawString(bangers2, "Saved!", new Vector2(1, 105), Color.Blue);
+                _spriteBatch.DrawString(bangers, "You lose!", new Vector2(300, 200), Color.Red);
+                _spriteBatch.DrawString(bangers, "Press R to Restart!", new Vector2(300, 250),Color.Purple);
+
             }
-            else
+            Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
+            _spriteBatch.Draw(pixel, new Rectangle(550, 10, 229, 40), Color.Red);
+            if (health >= 1600)
             {
-                _spriteBatch.DrawString(bangers2, "Not Saved!", new Vector2(1, 105), Color.Blue);
+                health = 1600;
             }
+            _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min(health,100) * 2.3), 40), Color.Green);
+         
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health-100),100) * 2.3), 40), Color.Blue);
             
+        
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 200),200) * 1.15), 40), Color.Purple);
+            _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 400), 400) * .575), 40), Color.Cyan);
+            Color[] rainbowColors = new Color[] {
+    Color.Red,
+    Color.OrangeRed,
+    Color.Orange,
+    Color.Gold,
+    Color.Yellow,
+    Color.YellowGreen,
+    Color.Green,
+    Color.LightGreen,
+    Color.SpringGreen,
+    Color.Cyan,
+    Color.SkyBlue,
+    Color.Blue,
+    Color.DarkBlue,
+    Color.Indigo,
+    Color.Violet,
+    Color.Magenta,
+    Color.DeepPink
+};
+            // Update this each frame; 'gameTime' is typically available in the update method
+            float time = (float)gameTime.TotalGameTime.TotalSeconds;
+
+            int baseHeight = 40; // Base height of each segment
+            float pulseSpeed = 2.0f; // Speed of the pulsating effect
+            int pulseHeight = 10; // Max additional height for the pulsating effect
+
+            // Maximum width for the full health bar (change this value to fit your design)
+
+
+            // Calculate the consistent width of each segment
+            int temp = (int)(Math.Min((health - 800), 800) * .2875);
+
+            if (temp > 0)
+            {
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)230, 40), Color.White);
+            }
+            for (int i = 0; i < temp; i++)
+            {
+                // Calculate the pulsating height for this frame
+                int currentHeight = baseHeight + (int)(Math.Sin(time * pulseSpeed + i) * pulseHeight);
+
+                // Calculate the Y position to keep the bar vertically centered
+                int yPos = 10 + (baseHeight - currentHeight) / 2;
+
+                _spriteBatch.Draw(pixel, new Rectangle(550 + i, yPos, 1, currentHeight), rainbowColors[i%rainbowColors.Length]);
+            }
+
+
             _spriteBatch.End();
             base.Draw(gameTime);
         }

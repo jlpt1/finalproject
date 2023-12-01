@@ -34,3 +34,9 @@
 /processorParam:Scale=1
 /build:example.tmap
 
+#begin example2.tmap
+/importer:BasicTilemapImporter
+/processor:BasicTilemapProcessor
+/processorParam:Scale=1
+/build:example2.tmap
+
