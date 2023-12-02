@@ -4,3 +4,5 @@ Content/Bangers2/Bangers-Regular.ttf - Bangers font created by Vernon Adams, rel
 Content/Bangers/Bangers-Regular.ttf - Bangers font created by Vernon Adams, modified by me
 
 Content/tileset.png - created by me
+Content/gem.wav - https://freesound.org/people/high_festiva/sounds/194439/
+Content/dig.wav - https://freesound.org/people/LittleRobotSoundFactory/sounds/276097/

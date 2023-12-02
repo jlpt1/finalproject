@@ -1,8 +1,12 @@
-﻿using Microsoft.Xna.Framework;
+﻿
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 using SharpDX.DirectWrite;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.IO;
@@ -26,6 +30,8 @@ namespace ExampleGame
         private SpriteBatch _spriteBatch;
         private BasicTilemap _tilemap;
         private BasicTilemap _oremap;
+        private Texture2D _oresetTexture;
+        private Texture2D _tilemapTexture;
         private SpriteFont bangers;
         private SpriteFont bangers2;
         private int _selectedBlockIndex = 0;
@@ -36,7 +42,10 @@ namespace ExampleGame
         private int level = 1;
         private int orecount = 0;
         private int lastGemCollected = 0;
-
+        SoundEffect gemSound;
+        SoundEffect digSound;
+        Song mySong;
+        private List<Particle> particles;
 
         public Game1()
         {
@@ -49,11 +58,11 @@ namespace ExampleGame
 
         protected override void Initialize()
         {
-           
 
-                // Now, tilemapPath should point to examplegame/content/tilemap.tmap
 
-           
+            // Now, tilemapPath should point to examplegame/content/tilemap.tmap
+
+            particles = new List<Particle>();
          
             base.Initialize();
         }
@@ -62,12 +71,20 @@ namespace ExampleGame
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             // _tilemap = Content.Load<BasicTilemap>("example");
+
+            gemSound = Content.Load<SoundEffect>("gem");
+            digSound = Content.Load<SoundEffect>("dig");
+            
             // Current directory is examplegame/bin
             bangers = Content.Load<SpriteFont>("bangers");
             bangers2 = Content.Load<SpriteFont>("bangers2");
             _essence = LoadFromFile();
             _tilemap = Content.Load<BasicTilemap>("example");
             _oremap = Content.Load<BasicTilemap>("example2");
+            _oresetTexture = Content.Load<Texture2D>("oreset");
+            _tilemapTexture = Content.Load<Texture2D>("tileset");
+
+
  gen();
 
         }
@@ -89,8 +106,11 @@ namespace ExampleGame
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-
-            health = health - (1 * Math.Sqrt(level)/3);
+            foreach (var particle in particles)
+            {
+                particle.Update();
+            }
+            health = health - (1 * (float)level/5);
             if (health < 0)
             {
                 health = 0;
@@ -107,7 +127,7 @@ namespace ExampleGame
             {
                 gen();
                 level++;
-               
+                particles.RemoveAll(particle => particle.Equals(particle));
             }
 
             if (keyboardState.IsKeyDown(Keys.D1)) _selectedBlockIndex = 0;
@@ -118,6 +138,7 @@ namespace ExampleGame
             MouseState mouseState = Mouse.GetState();
             if (mouseState.RightButton == ButtonState.Pressed)
             {
+                /*
                 saved = false;
                 Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
                 int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
@@ -128,59 +149,103 @@ namespace ExampleGame
                     _essence -= costs[_selectedBlockIndex];
                 }
                     
-                
+                */
                 
             }
             if (mouseState.LeftButton == ButtonState.Pressed)
             {
                 if (health > 0)
                 {
-
+                    
 
                     saved = false;
                     Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
                     int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
                     if (tileType != 0)
                     {
+                        Random r = new Random();
+                        digSound.Play(0.25f, 0.1f * r.Next(-3, 3), (0.07f) * (tilePosition.X - 12));
                         SetTileAt(tilePosition.X, tilePosition.Y, 0, _tilemap);  // Assuming 0 is air/empty
                         if (tileType == 1)
                         {
+                            
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(0, 0, 32, 32);
+                            float scale = 0.3f; // Adjust the scale as needed
+                            Particle particle = new Particle(_tilemapTexture, v*32, r.Next(4,6),sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
+
+                            
                             health += 1;
                         }
                         if (tileType == 2)
                         {
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(32, 0, 32, 32);
+                            float scale = 0.3f; // Adjust the scale as needed
+                            Particle particle = new Particle(_tilemapTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
                             health += 1;
                         }
                         if (tileType == 3)
                         {
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(0, 32, 31, 31);
+                            float scale = 0.3f; // Adjust the scale as needed
+                            Particle particle = new Particle(_tilemapTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
                             health += 1;
 
                         }
                         if (tileType == 4)
                         {
+                          
                             health += 1;
                         }
                     }
                     int oreType = GetTileIndex(tilePosition.X, tilePosition.Y, _oremap);
                     if (oreType > 0)
                     {
+                        Random r = new Random();
+                        
+                        gemSound.Play(0.25f, 0.1f*r.Next(-3, 3), (0.07f)*(tilePosition.X-12));
                         SetTileAt(tilePosition.X, tilePosition.Y, 0, _oremap);  // Assuming 0 is air/empty
                         orecount -= 1;
                         if (oreType == 1)
                         {
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(0, 0, 32, 32);
+                            float scale = 1f; // Adjust the scale as needed
+                            Particle particle = new Particle(_oresetTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
                             health += 30;
                         }
                         if (oreType == 2)
                         {
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(32, 0, 32, 32);
+                            float scale = 1f; // Adjust the scale as needed
+                            Particle particle = new Particle(_oresetTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
                             health += 40;
                         }
                         if (oreType == 3)
                         {
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(0, 32, 32, 32);
+                            float scale = 1f; // Adjust the scale as needed
+                            Particle particle = new Particle(_oresetTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
                             health += 5;
 
                         }
                         if (oreType == 4)
                         {
+                            Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
+                            Rectangle sourceRect = new Rectangle(32, 32, 32, 32);
+                            float scale = 1f; // Adjust the scale as needed
+                            Particle particle = new Particle(_oresetTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
+                            particles.Add(particle);
                             health += 7;
                         }
                     }
@@ -533,7 +598,11 @@ namespace ExampleGame
                 _spriteBatch.Draw(pixel, new Rectangle(550 + i, yPos, 1, currentHeight), rainbowColors[i%rainbowColors.Length]);
             }
 
-
+            foreach (var particle in particles)
+            {
+                particle.Draw(_spriteBatch);
+               
+            }
             _spriteBatch.End();
             base.Draw(gameTime);
         }
