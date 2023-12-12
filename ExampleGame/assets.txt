@@ -6,3 +6,8 @@ Content/Bangers/Bangers-Regular.ttf - Bangers font created by Vernon Adams, modi
 Content/tileset.png - created by me
 Content/gem.wav - https://freesound.org/people/high_festiva/sounds/194439/
 Content/dig.wav - https://freesound.org/people/LittleRobotSoundFactory/sounds/276097/
+Content/cannonsound.wav - https://freesound.org/people/DeVern/sounds/517664/
+Content/pball.png - created by me
+Content/music.mp3 - Epidemic Sound https://www.epidemicsound.com/track/6OW1CEE1Np/
+Content/clouds.png - open game art https://opengameart.org/content/cartoony-cloud-images
+Content/cannon.png - created by me

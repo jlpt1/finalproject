@@ -4,6 +4,8 @@ using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using SharpDX.Direct2D1.Effects;
+using SharpDX.Direct3D9;
 using SharpDX.DirectWrite;
 using System;
 using System.Collections.Generic;
@@ -31,9 +33,11 @@ namespace ExampleGame
         private BasicTilemap _tilemap;
         private BasicTilemap _oremap;
         private Texture2D _oresetTexture;
+        private Song backgroundMusic;
         private Texture2D _tilemapTexture;
         private SpriteFont bangers;
         private SpriteFont bangers2;
+        private Texture2D mainMenuBackground;
         private int _selectedBlockIndex = 0;
         private int _essence = 100;
         private int[] costs = { 20, 4, 8, 40 };
@@ -41,12 +45,20 @@ namespace ExampleGame
         private double health = 100;
         private int level = 1;
         private int orecount = 0;
+        public bool specialState = false;
         private int lastGemCollected = 0;
         SoundEffect gemSound;
         SoundEffect digSound;
+        SoundEffect cannonSound;
+        private bool playing = false;
+        private bool fired = false;
+        private bool help = false;
+        private bool isHPressed = false;
         Song mySong;
+        Cannon cannon;
         private List<Particle> particles;
-
+        private List<Ball> balls = new List<Ball>();
+        private bool mouseWasPressed = false;
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -63,7 +75,8 @@ namespace ExampleGame
             // Now, tilemapPath should point to examplegame/content/tilemap.tmap
 
             particles = new List<Particle>();
-         
+            cannon = new Cannon();
+           
             base.Initialize();
         }
 
@@ -71,10 +84,14 @@ namespace ExampleGame
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             // _tilemap = Content.Load<BasicTilemap>("example");
-
+            cannon.LoadContent(Content);
+            backgroundMusic = Content.Load<Song>("music");
+            MediaPlayer.Play(backgroundMusic);
+            MediaPlayer.IsRepeating = true;
             gemSound = Content.Load<SoundEffect>("gem");
             digSound = Content.Load<SoundEffect>("dig");
-            
+            cannonSound = Content.Load<SoundEffect>("cannonsound");
+            mainMenuBackground = Content.Load<Texture2D>("clouds");
             // Current directory is examplegame/bin
             bangers = Content.Load<SpriteFont>("bangers");
             bangers2 = Content.Load<SpriteFont>("bangers2");
@@ -91,75 +108,15 @@ namespace ExampleGame
 
 
 
-
-
-        private Point ScreenToTilePosition(Vector2 screenPosition, BasicTilemap t)
+        public void ballCollision(Vector2 pos)
         {
-            int tileX = (int)(screenPosition.X / t.TileWidth);
-            int tileY = (int)(screenPosition.Y / t.TileHeight);
-
-            return new Point(tileX, tileY);
-        }
-
-
-        protected override void Update(GameTime gameTime)
-        {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
-            foreach (var particle in particles)
-            {
-                particle.Update();
-            }
-            health = health - (1 * (float)level/5);
-            if (health < 0)
-            {
-                health = 0;
-            }
-          
-            KeyboardState keyboardState = Keyboard.GetState();
-            if (keyboardState.IsKeyDown(Keys.S))
-            {
-                SaveToFile(_essence.ToString());
-                SaveCurrentState();
-            }
-          
-            if (orecount <= 0)
-            {
-                gen();
-                level++;
-                particles.RemoveAll(particle => particle.Equals(particle));
-            }
-
-            if (keyboardState.IsKeyDown(Keys.D1)) _selectedBlockIndex = 0;
-            if (keyboardState.IsKeyDown(Keys.D2)) _selectedBlockIndex = 1;
-            if (keyboardState.IsKeyDown(Keys.D3)) _selectedBlockIndex = 2;
-            if (keyboardState.IsKeyDown(Keys.D4)) _selectedBlockIndex = 3;
-
-            MouseState mouseState = Mouse.GetState();
-            if (mouseState.RightButton == ButtonState.Pressed)
-            {
-                /*
-                saved = false;
-                Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
-                int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
-                if (_essence >= costs[_selectedBlockIndex] && tileType != _selectedBlockIndex+1)
-                {
-                    SetTileAt(tilePosition.X, tilePosition.Y, _selectedBlockIndex + 1, _tilemap);
-                    
-                    _essence -= costs[_selectedBlockIndex];
-                }
-                    
-                */
-                
-            }
-            if (mouseState.LeftButton == ButtonState.Pressed)
             {
                 if (health > 0)
                 {
-                    
+
 
                     saved = false;
-                    Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
+                    Point tilePosition = ScreenToTilePosition(new Vector2(pos.X, pos.Y), _tilemap);
                     int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
                     if (tileType != 0)
                     {
@@ -168,14 +125,14 @@ namespace ExampleGame
                         SetTileAt(tilePosition.X, tilePosition.Y, 0, _tilemap);  // Assuming 0 is air/empty
                         if (tileType == 1)
                         {
-                            
+
                             Vector2 v = new Vector2(tilePosition.X, tilePosition.Y);
                             Rectangle sourceRect = new Rectangle(0, 0, 32, 32);
                             float scale = 0.3f; // Adjust the scale as needed
-                            Particle particle = new Particle(_tilemapTexture, v*32, r.Next(4,6),sourceRect, scale); // Create 5 particles
+                            Particle particle = new Particle(_tilemapTexture, v * 32, r.Next(4, 6), sourceRect, scale); // Create 5 particles
                             particles.Add(particle);
 
-                            
+
                             health += 1;
                         }
                         if (tileType == 2)
@@ -199,7 +156,7 @@ namespace ExampleGame
                         }
                         if (tileType == 4)
                         {
-                          
+
                             health += 1;
                         }
                     }
@@ -207,8 +164,8 @@ namespace ExampleGame
                     if (oreType > 0)
                     {
                         Random r = new Random();
-                        
-                        gemSound.Play(0.25f, 0.1f*r.Next(-3, 3), (0.07f)*(tilePosition.X-12));
+
+                        gemSound.Play(0.25f, 0.1f * r.Next(-3, 3), (0.07f) * (tilePosition.X - 12));
                         SetTileAt(tilePosition.X, tilePosition.Y, 0, _oremap);  // Assuming 0 is air/empty
                         orecount -= 1;
                         if (oreType == 1)
@@ -251,11 +208,120 @@ namespace ExampleGame
                     }
                 }
             }
+        }
+
+        private Point ScreenToTilePosition(Vector2 screenPosition, BasicTilemap t)
+        {
+            int tileX = (int)(screenPosition.X / t.TileWidth);
+            int tileY = (int)(screenPosition.Y / t.TileHeight);
+
+            return new Point(tileX, tileY);
+        }
+
+
+        protected override void Update(GameTime gameTime)
+        {
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                Exit();
+            if (health > 1500)
+            {
+                specialState = true;
+
+            }
+            else
+            {
+                specialState = false;
+            }
+            foreach (var particle in particles)
+            {
+                particle.Update();
+            }
+            if (playing & fired)
+            {
+                health = health - (1 * (float)level / 5);
+            }
+            
+            if (health < 0)
+            {
+                health = 0;
+            }
+
+            KeyboardState keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.Enter))
+            {
+                playing = true;
+            }
+
+            if (orecount <= 0)
+            {
+                gen();
+                level++;
+                for (int i = balls.Count - 1; i >= 0; i--)
+                {
+
+                    balls[i].moveTop();
+                    
+                }
+                particles.RemoveAll(particle => particle.Equals(particle));
+            }
+
+            if (keyboardState.IsKeyDown(Keys.D1)) _selectedBlockIndex = 0;
+            if (keyboardState.IsKeyDown(Keys.D2)) _selectedBlockIndex = 1;
+            if (keyboardState.IsKeyDown(Keys.D3)) _selectedBlockIndex = 2;
+            if (keyboardState.IsKeyDown(Keys.D4)) _selectedBlockIndex = 3;
+
+            MouseState mouseState = Mouse.GetState();
+            if (mouseState.RightButton == ButtonState.Pressed)
+            {
+
+                /*
+                saved = false;
+                Point tilePosition = ScreenToTilePosition(new Vector2(mouseState.X, mouseState.Y), _tilemap);
+                int tileType = GetTileIndex(tilePosition.X, tilePosition.Y, _tilemap);
+                if (_essence >= costs[_selectedBlockIndex] && tileType != _selectedBlockIndex+1)
+                {
+                    SetTileAt(tilePosition.X, tilePosition.Y, _selectedBlockIndex + 1, _tilemap);
+                    
+                    _essence -= costs[_selectedBlockIndex];
+                }
+                    
+                */
+
+            }
+
+
+            if (mouseState.LeftButton == ButtonState.Pressed)
+            {
+
+            }
+            if (Keyboard.GetState().IsKeyDown(Keys.H))
+            {
+                if (!isHPressed) // This ensures the code runs once when H is initially pressed
+                {
+                    isHPressed = true;
+
+                    // Start a high frequency timer to toggle 'help'
+                    help = true;
+                }
+            }
+            else
+            {
+                isHPressed = false;
+                help = false;// Stop the toggling when H is not pressed
+            }
             if (Keyboard.GetState().IsKeyDown(Keys.R))
             {
                if (health <= 0)
                 {
+
                     gen();
+                    for (int i = balls.Count - 1; i >= 0; i--)
+                    {
+                       
+                            balls.RemoveAt(i);
+                        
+                    }
+                    fired = false;
                     health = 100;
                     level = 1;
                 }
@@ -301,7 +367,7 @@ namespace ExampleGame
                         SetTileAt(x, y + 1, 2, _tilemap);
                         Random r = new Random();
 
-                        if (r.Next(1, 21) == 5)
+                        if (r.Next(1, 11) < 2 + Math.Log2(level))
                         {
 
                             int temp = r.Next(3, 5);
@@ -324,8 +390,8 @@ namespace ExampleGame
                 {
                      SetTileAt(x, y + 1, 3, _tilemap);
                     Random r = new Random();
-
-                    if (r.Next(1, 11) < 2)
+                    
+                    if (r.Next(1, 11) < 2+ Math.Log2(level)-1)
                     {
 
                         int temp = r.Next(1, 11);
@@ -342,6 +408,11 @@ namespace ExampleGame
                      
                     }
 
+                }
+
+                if (orecount <= 0)
+                {
+                    SetTileAt(4, terrainHeight + 4, 2, _oremap);
                 }
 
                 // Fill the rest of the column with air or another tile to represent empty space
@@ -431,6 +502,26 @@ namespace ExampleGame
              staThread.Start();
              staThread.Join();
          }*/
+
+        public void createBall(MouseState mouseState, Vector2 spawnPosition)
+        {
+            // Convert mouse position from Point to Vector2
+            Vector2 mousePosition = new Vector2(mouseState.X, mouseState.Y);
+
+            // Calculate direction from spawn position to mouse position
+            Vector2 direction = mousePosition - spawnPosition;
+            direction.Normalize(); // Normalize to get the direction vector
+
+            // Set a velocity magnitude (speed)
+            float speed = 600.0f; // You can adjust this value as needed
+
+            // Create a new ball at the spawn position with velocity towards the mouse position
+            Ball newBall = new Ball(spawnPosition, direction * speed,this);
+            newBall.LoadContent(Content);
+            // Add the new ball to a list of balls (assuming you have one)
+            balls.Add(newBall); // Assuming 'balls' is a List<Ball>
+        }
+
         private void SaveCurrentState()
         {
             StringBuilder sb = new StringBuilder();
@@ -514,44 +605,72 @@ namespace ExampleGame
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
-           
-            // Drawing the tilemap
-            _spriteBatch.Begin();
-            _tilemap.Draw(gameTime, _spriteBatch);
-           // _tilemap.DrawBlock(gameTime, _spriteBatch, _selectedBlockIndex);
-           _oremap.Draw(gameTime, _spriteBatch);
             
-            _spriteBatch.End();
-            _spriteBatch.Begin();
-            _spriteBatch.DrawString(bangers, "Level: " + level, new Vector2(1, 1), Color.Gold);
-            _spriteBatch.DrawString(bangers, "Gems: " + orecount, new Vector2(1, 25), Color.Red);
-
-            _spriteBatch.DrawString(bangers2, "Click on the blocks to destroy them", new Vector2(1, 55), Color.Black);
-            _spriteBatch.DrawString(bangers2, "Gather all the gems to go to the next level", new Vector2(1, 70), Color.Black);
-            _spriteBatch.DrawString(bangers2, "Your health metter on the right slowly declines", new Vector2(1, 85), Color.Black);
-            _spriteBatch.DrawString(bangers2, "Gather gems / blocks to get health", new Vector2(1, 100), Color.Black);
-            _spriteBatch.DrawString(bangers2, "The higher level you are the faster your health declines", new Vector2(1, 115), Color.Black);
-            if (health <= 0)
+            if (!playing && !help)
             {
-                _spriteBatch.DrawString(bangers, "You lose!", new Vector2(300, 200), Color.Red);
-                _spriteBatch.DrawString(bangers, "Press R to Restart!", new Vector2(300, 250),Color.Purple);
+                _spriteBatch.Begin();
+                _spriteBatch.Draw(mainMenuBackground, new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height), Color.White);
+                _spriteBatch.Draw(mainMenuBackground, new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height), Color.White);
+                _spriteBatch.DrawString(bangers, "Poggle", new Vector2(250, 50), Color.Gold, 0, new Vector2(0,0), 2, SpriteEffects.None, 0.5f);
+          
+                _spriteBatch.DrawString(bangers, "Press Enter to Start", new Vector2(200, 200), Color.Black);
+                _spriteBatch.DrawString(bangers, "Press Esc to Exit", new Vector2(200, 250), Color.Black);
+                _spriteBatch.DrawString(bangers, "Hold H for Help", new Vector2(200, 300), Color.Black);
 
+                _spriteBatch.End();
             }
-            Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
-            pixel.SetData(new[] { Color.White });
-            _spriteBatch.Draw(pixel, new Rectangle(550, 10, 229, 40), Color.Red);
-            if (health >= 1600)
+            if (help && !playing)
             {
-                health = 1600;
+                _spriteBatch.Begin();
+                _spriteBatch.Draw(mainMenuBackground, new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height), Color.White);
+                _spriteBatch.Draw(mainMenuBackground, new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height), Color.White);
+                _spriteBatch.DrawString(bangers, "Click to shoot a ball, you can shoot multiple", new Vector2(0 ,50), Color.Gold);
+                _spriteBatch.DrawString(bangers, "The balls you shoot can break blocks and give health", new Vector2(0, 100), Color.Gold);
+                _spriteBatch.DrawString(bangers, "Gems give more health", new Vector2(0, 150), Color.Gold);
+                _spriteBatch.DrawString(bangers, "Destroy all gems to go to the next level", new Vector2(0, 200), Color.Gold);
+                
+                _spriteBatch.DrawString(bangers, "The higher level you are on the faster your health will decrease", new Vector2(0, 250), Color.Gold);
+                _spriteBatch.DrawString(bangers, "The different color health bar represents higher health", new Vector2(0, 300), Color.Gold);
+                _spriteBatch.DrawString(bangers, "After you beat a level the balls you shot before respawn at the top", new Vector2(0, 350), Color.Gold);
+                _spriteBatch.DrawString(bangers, "Something special happens when your health reaches maximum capacity", new Vector2(0, 400), Color.Gold);
+                _spriteBatch.End();
             }
-            _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min(health,100) * 2.3), 40), Color.Green);
-         
-                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health-100),100) * 2.3), 40), Color.Blue);
-            
-        
-                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 200),200) * 1.15), 40), Color.Purple);
-            _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 400), 400) * .575), 40), Color.Cyan);
-            Color[] rainbowColors = new Color[] {
+            if (playing)
+            {
+                // Drawing the tilemap
+                _spriteBatch.Begin();
+                _spriteBatch.Draw(mainMenuBackground, new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height), Color.White);
+                _tilemap.Draw(gameTime, _spriteBatch);
+                // _tilemap.DrawBlock(gameTime, _spriteBatch, _selectedBlockIndex);
+                _oremap.Draw(gameTime, _spriteBatch);
+
+                _spriteBatch.End();
+                _spriteBatch.Begin();
+                _spriteBatch.DrawString(bangers, "Level: " + level, new Vector2(1, 1), Color.Gold);
+                _spriteBatch.DrawString(bangers, "Gems: " + orecount, new Vector2(1, 25), Color.Red);
+
+                
+                if (health <= 0)
+                {
+                    _spriteBatch.DrawString(bangers, "You lose!", new Vector2(300, 200), Color.Red);
+                    _spriteBatch.DrawString(bangers, "Press R to Restart!", new Vector2(300, 250), Color.Purple);
+
+                }
+                Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
+                pixel.SetData(new[] { Color.White });
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, 229, 40), Color.Red);
+                if (health >= 1600)
+                {
+                    health = 1600;
+                }
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min(health, 100) * 2.3), 40), Color.Green);
+
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 100), 100) * 2.3), 40), Color.Blue);
+
+
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 200), 200) * 1.15), 40), Color.Purple);
+                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)(Math.Min((health - 400), 400) * .575), 40), Color.Cyan);
+                Color[] rainbowColors = new Color[] {
     Color.Red,
     Color.OrangeRed,
     Color.Orange,
@@ -570,40 +689,83 @@ namespace ExampleGame
     Color.Magenta,
     Color.DeepPink
 };
-            // Update this each frame; 'gameTime' is typically available in the update method
-            float time = (float)gameTime.TotalGameTime.TotalSeconds;
+                // Update this each frame; 'gameTime' is typically available in the update method
+                float time = (float)gameTime.TotalGameTime.TotalSeconds;
 
-            int baseHeight = 40; // Base height of each segment
-            float pulseSpeed = 2.0f; // Speed of the pulsating effect
-            int pulseHeight = 10; // Max additional height for the pulsating effect
+                int baseHeight = 40; // Base height of each segment
+                float pulseSpeed = 2.0f; // Speed of the pulsating effect
+                int pulseHeight = 10; // Max additional height for the pulsating effect
 
-            // Maximum width for the full health bar (change this value to fit your design)
+                // Maximum width for the full health bar (change this value to fit your design)
 
 
-            // Calculate the consistent width of each segment
-            int temp = (int)(Math.Min((health - 800), 800) * .2875);
+                // Calculate the consistent width of each segment
+                int temp = (int)(Math.Min((health - 800), 800) * .2875);
 
-            if (temp > 0)
-            {
-                _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)230, 40), Color.White);
+                if (temp > 0)
+                {
+                    _spriteBatch.Draw(pixel, new Rectangle(550, 10, (int)230, 40), Color.White);
+                }
+                for (int i = 0; i < temp; i++)
+                {
+                    // Calculate the pulsating height for this frame
+                    int currentHeight = baseHeight + (int)(Math.Sin(time * pulseSpeed + i) * pulseHeight);
+
+                    // Calculate the Y position to keep the bar vertically centered
+                    int yPos = 10 + (baseHeight - currentHeight) / 2;
+
+                    _spriteBatch.Draw(pixel, new Rectangle(550 + i, yPos, 1, currentHeight), rainbowColors[i % rainbowColors.Length]);
+                }
+                MouseState mouseState = Mouse.GetState();
+                foreach (var particle in particles)
+                {
+                    particle.Draw(_spriteBatch);
+
+                }
+                for (int i = balls.Count - 1; i >= 0; i--)
+                {
+                    if (balls[i].health <= 0)
+                    {
+                        balls.RemoveAt(i);
+                    }
+                }
+                foreach (var ball in balls)
+                {
+                    ball.Update(gameTime, _tilemap, mouseState);
+                    ball.Draw(_spriteBatch);
+
+                }
+
+                cannon.Draw(_spriteBatch);
+
+
+                cannon.Update(gameTime, mouseState);
+
+
+
+
+                // Update each ball
+
+
+
+                // Check if left mouse button is pressed and mouseWasPressed is false
+                if (mouseState.LeftButton == ButtonState.Pressed && !mouseWasPressed)
+                {
+                    Vector2 spawnPosition = new Vector2(400, 0);
+                    fired = true;
+                    createBall(mouseState, spawnPosition);
+                    
+                    Random r = new Random();
+                    cannonSound.Play(0.25f, 0.1f * r.Next(-3, 3), 0f);
+                    mouseWasPressed = true; // Set the flag to true after creating a ball
+                }
+                else if (mouseState.LeftButton == ButtonState.Released)
+                {
+                    mouseWasPressed = false; // Reset the flag when the mouse button is released
+                }
+
+                _spriteBatch.End();
             }
-            for (int i = 0; i < temp; i++)
-            {
-                // Calculate the pulsating height for this frame
-                int currentHeight = baseHeight + (int)(Math.Sin(time * pulseSpeed + i) * pulseHeight);
-
-                // Calculate the Y position to keep the bar vertically centered
-                int yPos = 10 + (baseHeight - currentHeight) / 2;
-
-                _spriteBatch.Draw(pixel, new Rectangle(550 + i, yPos, 1, currentHeight), rainbowColors[i%rainbowColors.Length]);
-            }
-
-            foreach (var particle in particles)
-            {
-                particle.Draw(_spriteBatch);
-               
-            }
-            _spriteBatch.End();
             base.Draw(gameTime);
         }
     }
